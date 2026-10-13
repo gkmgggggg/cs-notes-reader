@@ -1,18 +1,58 @@
 # 阿里云静态部署说明
 
-当前阶段只完成本地初始化。以下为后续发布约定，不表示服务器配置已修改或公网地址已验证。
+使用 SSH + Docker Compose + 独立 Nginx 容器部署，配置文件为项目根目录的 `compose.yaml`。本地构建静态页面，服务器运行 Nginx 提供文件访问。
 
-默认目标通过 `ssh aliyun` 连接。发布前遵循 `/Users/yj/Desktop/project/aliyun/AGENTS.md`，重新检查现有 Nginx、宝塔管理方式、站点目录、端口、防火墙及安全组。
+2026-10-13 已只读确认服务器安装 Docker 26.1.3 和 Compose 2.27.0，8081 当时未监听，80 已由现有 Nginx 使用。尚未上传或启动本项目；发布前重新确认端口状态，并遵循 `/Users/yj/Desktop/project/aliyun/AGENTS.md`。
 
-## 发布方式
+## 本地构建与上传
 
-1. 本地执行 `npm ci`、检查、测试和 `npm run build`，获得完整 `dist/`，其中包括 Pagefind 索引。
-2. 静态产物上传到 `/www/wwwroot/cs-notes-reader/releases/<release-id>/`；不上传私钥、凭据或 `node_modules`。
-3. 在检查现有 Nginx 配置并备份后，将 `/cs-notes/` 映射到本项目 `current/`，由 `current` 指向一个版本目录。
-4. Nginx 配置变更先执行 `nginx -t`，通过后平滑加载；普通页面更新仅切换版本。
-5. 服务器内部和用户实际网络分别验证首页、深层 `.html` 页面、图片与搜索。
-6. 有问题时切回上一版；保留上一版资源，兼容已经打开的页面。
+在 Mac 上执行，检查和构建均成功后再上传：
 
-目标访问入口：`http://115.29.171.189/cs-notes/`。该地址待实际发布与公网检查。
+```bash
+cd /Users/yj/Desktop/project/cs-notes-reader
+npm run check
+npm run test:unit
+npm run build
 
-首版不需要常驻 Node、PM2、数据库或新增 Docker 容器。已有 `ai-images` 项目的服务和端口独立，发布时不改动其配置。
+ssh aliyun 'mkdir -p /opt/cs-notes-reader/dist'
+scp compose.yaml aliyun:/opt/cs-notes-reader/
+scp -r dist/. aliyun:/opt/cs-notes-reader/dist/
+```
+
+上传后 `compose.yaml` 和 `dist/` 必须位于同一个目录。`dist/` 包含正文、图片、前端资源和 Pagefind 搜索索引；服务器不需要安装项目的 Node.js 依赖。
+
+## 启动与检查
+
+SSH 登录服务器后执行：
+
+```bash
+cd /opt/cs-notes-reader
+docker compose -p cs-notes-reader config -q
+docker compose -p cs-notes-reader up -d
+docker compose -p cs-notes-reader ps
+curl -I http://127.0.0.1:8081/cs-notes/
+```
+
+`config -q` 只校验配置；`up -d` 在后台启动容器；`ps` 应显示运行中；网页应返回 HTTP 200。首次启动需要下载 Nginx 镜像。排错时使用：
+
+```bash
+docker compose -p cs-notes-reader logs --tail=100 web
+```
+
+容器把服务器的 8081 端口映射到 Nginx 的 80 端口，并将 `dist/` 只读挂载到 `/usr/share/nginx/html/cs-notes/`，与网站的 `/cs-notes/` 部署前缀一致。
+
+## 公网验收
+
+在阿里云 ECS 安全组中允许入站 TCP 8081，并按需设置访问来源、检查服务器防火墙。然后从实际使用的网络访问：
+
+`http://115.29.171.189:8081/cs-notes/`
+
+检查首页、网络分类、深层 `.html` 页面、插图以及 Socket 等搜索词。服务器内部访问成功不等于公网可达。
+
+## 更新与回退
+
+更新前备份服务器上的 `dist/`，记录备份位置。重新本地构建，再上传新的产物；普通静态文件更新无需重启容器。修改 Compose 配置后，重新校验并执行 `up -d`。
+
+回退时恢复备份的 `dist/` 内容；如果 Compose 配置也有变更，同时恢复其备份并执行 `up -d`。需要停止本项目时，在此目录执行 `docker compose -p cs-notes-reader down`。
+
+阅读进度和书签仍保存在浏览器；本地地址与服务器地址的数据分别存储，可以通过设置页导出/导入 JSON 迁移。

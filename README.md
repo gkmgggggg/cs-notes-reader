@@ -58,8 +58,9 @@ npm run content:sync
 - `docs/cs-notes-reader-prd.md`：需求与验收标准。
 - `docs/cs-notes-reader-tech-stack.md`：技术架构决策。
 - `docs/deployment.md`：阿里云部署边界与发布方式。
+- `compose.yaml`：独立 Nginx 容器配置，8081 端口访问，只读挂载构建后的 `dist/`。
 
-网站默认部署前缀 `/cs-notes/`，内部页面以 `.html` 输出。当前尚未连接服务器或发布网站。
+网站默认部署前缀 `/cs-notes/`，内部页面以 `.html` 输出。通过 SSH + Docker Compose 部署，计划访问 `http://115.29.171.189:8081/cs-notes/`。已只读检查服务器环境，尚未发布网站。构建完成后，可在有 Docker 的环境执行 `docker compose -p cs-notes-reader up -d`。
 
 ## 来源与许可
 

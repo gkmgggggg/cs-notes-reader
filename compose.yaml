@@ -1,0 +1,8 @@
+services:
+  web:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./dist:/usr/share/nginx/html/cs-notes:ro
