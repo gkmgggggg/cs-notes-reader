@@ -1,0 +1,9 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import { categories, notes, rootNotes, childrenOf, noteUrl, url } from '../../lib/content';
+export function getStaticPaths() { return categories.map(category => ({ params: { category: category.id }, props: { category } })); }
+const { category } = Astro.props;
+const chapters = rootNotes.filter(note => note.categoryId === category.id);
+const supplements = notes.filter(note => note.categoryId === category.id && note.archived);
+---
+<SiteLayout title={category.title}><main id="main" class="simple-main"><a class="back-link" href={url()}>← 返回知识目录</a><div class="page-heading"><span class="eyebrow">COLLECTION {category.number}</span><h1>{category.title}</h1><p>{category.detail}</p></div><div class="chapter-list">{chapters.map(note => <a href={noteUrl(note)}><span><strong>{note.title}</strong><small>{note.pageType === 'index' ? `${childrenOf(note).length} 个章节 · 目录与参考资料` : note.category}</small></span><span class="chapter-arrow">→</span></a>)}</div>{supplements.length > 0 && <details class="supplement-list"><summary>补充版本 · {supplements.length} 篇</summary><div class="chapter-list">{supplements.map(note => <a href={noteUrl(note)}><span><strong>{note.title}</strong><small>上游保留的旧版或合订版本</small></span><span class="chapter-arrow">→</span></a>)}</div></details>}</main></SiteLayout>

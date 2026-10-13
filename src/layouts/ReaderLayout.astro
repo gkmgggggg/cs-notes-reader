@@ -1,0 +1,64 @@
+---
+import SiteLayout from './SiteLayout.astro';
+import ReaderToolbar from '../components/ReaderToolbar';
+import { categories, notes, rootNotes, childrenOf, chapterLabel, noteUrl, url } from '../lib/content';
+interface Props { note: (typeof notes)[number] & { sourceUrl: string }; headings: { depth: number; slug: string; text: string }[]; }
+const { note, headings } = Astro.props;
+const outline = headings.filter(h => h.depth >= 2 && h.depth <= 4);
+const siblings = notes.filter(n => note.parentId ? n.groupId === note.groupId : n.categoryId === note.categoryId);
+const index = siblings.findIndex(n => n.noteId === note.noteId);
+const parent = notes.find(n => n.noteId === note.parentId);
+---
+<SiteLayout title={note.title}>
+  <div class="reader-shell">
+    <aside class="chapter-sidebar" aria-label="章节导航"><details open><summary>知识目录</summary><div class="sidebar-content">
+      <a class="sidebar-back" href={url()}>← 所有知识分类</a>
+      {categories.map(category => <section><h2><a href={url(`category/${category.id}.html`)}>{category.title}</a></h2>{rootNotes.filter(n => n.categoryId === category.id).map(item => item.pageType === 'index' ? <details class="sidebar-group" open={item.groupId === note.groupId}><summary>{item.title}</summary><a href={noteUrl(item)} class={item.noteId === note.noteId ? 'current' : ''} aria-current={item.noteId === note.noteId ? 'page' : undefined}>目录与参考资料</a>{childrenOf(item).map(child => <a href={noteUrl(child)} class={child.noteId === note.noteId ? 'current' : ''} aria-current={child.noteId === note.noteId ? 'page' : undefined}>{chapterLabel(child)}</a>)}</details> : <a href={noteUrl(item)} class={item.noteId === note.noteId ? 'current' : ''} aria-current={item.noteId === note.noteId ? 'page' : undefined}>{item.title}</a>)}</section>)}
+    </div></details></aside>
+    <main id="main" class="reader-main">
+      <div class="breadcrumbs"><a href={url()}>知识目录</a><span>/</span><a href={url(`category/${note.categoryId}.html`)}>{note.category}</a>{parent && <><span>/</span><a href={noteUrl(parent)}>{parent.title}</a></>}</div>
+      <details class="mobile-outline"><summary>本篇目录</summary><nav>{outline.map(h => <a href={`#${h.slug}`}>{h.text}</a>)}</nav></details>
+      <article data-pagefind-body data-pagefind-meta={`category:${note.category},noteId:${note.noteId}`}>
+        <header class="article-heading"><span class="eyebrow">{note.category} / 阅读笔记</span><h1 data-pagefind-meta="title">{note.title}</h1><div class="article-source">作者：CyC2018 <span>·</span><a href={note.sourceUrl} target="_blank" rel="noopener noreferrer">查看原文 ↗</a></div></header>
+        <div class="toolbar-wrapper" data-pagefind-ignore><ReaderToolbar noteId={note.noteId} client:load /></div>
+        <div class="prose"><slot /></div>
+      </article>
+      <div class="reader-pagination">{index > 0 ? <a href={noteUrl(siblings[index - 1])}><small>← 上一篇</small><strong>{siblings[index - 1].title}</strong></a> : <span />}{index < siblings.length - 1 ? <a href={noteUrl(siblings[index + 1])}><small>下一篇 →</small><strong>{siblings[index + 1].title}</strong></a> : <span />}</div>
+    </main>
+    <aside class="outline-sidebar" aria-label="文章目录"><details open><summary>本篇目录</summary><nav>{outline.map(h => <a href={`#${h.slug}`} class={`depth-${h.depth}`} data-outline={h.slug}>{h.text}</a>)}</nav></details></aside>
+  </div>
+  <dialog id="image-viewer" class="image-dialog"><button aria-label="关闭图片">✕</button><img alt="放大查看笔记插图" /></dialog>
+  <script>
+    const mobileViewport = matchMedia('(max-width:760px)');
+    const chapterDetails = document.querySelector<HTMLDetailsElement>('.chapter-sidebar details');
+    const setChapterLayout = () => { if (chapterDetails) chapterDetails.open = !mobileViewport.matches; };
+    setChapterLayout();
+    mobileViewport.addEventListener('change', setChapterLayout);
+    const header = document.querySelector<HTMLElement>('.site-header');
+    if (header) new ResizeObserver(() => document.documentElement.style.setProperty('--header-height', `${header.offsetHeight}px`)).observe(header);
+    const headings = [...document.querySelectorAll<HTMLElement>('.prose h2[id],.prose h3[id],.prose h4[id]')];
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).at(-1);
+      if (visible) document.querySelectorAll('[data-outline]').forEach(link => link.classList.toggle('active', link.getAttribute('data-outline') === visible.target.id));
+    }, { rootMargin: '-90px 0px -70% 0px' });
+    headings.forEach(heading => observer.observe(heading));
+    document.querySelectorAll<HTMLPreElement>('.prose pre').forEach(pre => {
+      const button = document.createElement('button'); button.className = 'copy-code'; button.textContent = '复制'; button.setAttribute('aria-label', '复制代码');
+      button.addEventListener('click', async () => {
+        const code = pre.querySelector('code');
+        if (!code) return;
+        try { await navigator.clipboard.writeText(code.textContent ?? ''); button.textContent = '已复制'; }
+        catch { const range = document.createRange(); range.selectNodeContents(code); const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range); button.textContent = '已选中'; }
+        setTimeout(() => button.textContent = '复制', 1600);
+      }); pre.append(button);
+    });
+    const viewer = document.querySelector<HTMLDialogElement>('#image-viewer');
+    document.querySelectorAll<HTMLImageElement>('.prose img').forEach(img => {
+      img.loading = 'lazy'; img.decoding = 'async'; img.tabIndex = 0; img.setAttribute('aria-label', '放大查看插图');
+      const open = () => { const target = viewer?.querySelector('img'); if (target && viewer) { target.src = img.src; target.alt = img.alt || '笔记插图'; viewer.showModal(); } };
+      img.addEventListener('click', open); img.addEventListener('keydown', event => { if (event.key === 'Enter') open(); });
+    });
+    viewer?.querySelector('button')?.addEventListener('click', () => viewer.close());
+    viewer?.addEventListener('click', event => { if (event.target === viewer) viewer.close(); });
+  </script>
+</SiteLayout>

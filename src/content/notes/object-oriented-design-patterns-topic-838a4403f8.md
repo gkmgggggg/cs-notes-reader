@@ -1,0 +1,105 @@
+---
+noteId: "object-oriented-design-patterns-topic-838a4403f8"
+title: "设计模式 · 迭代器"
+categoryId: "object-oriented"
+category: "面向对象"
+route: "object-oriented/design-patterns/topic-838a4403f8"
+sourcePath: "notes/设计模式 - 迭代器.md"
+order: 146
+groupId: "object-oriented-design-patterns"
+parentId: "object-oriented-design-patterns"
+pageType: "article"
+archived: false
+sourceUrl: "https://github.com/CyC2018/CS-Notes/blob/b70121d377cb6005eb65f12b098cd5decd905669/notes/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%20-%20%E8%BF%AD%E4%BB%A3%E5%99%A8.md"
+sourceCommit: "b70121d377cb6005eb65f12b098cd5decd905669"
+---
+
+## 迭代器（Iterator）
+
+### Intent
+
+提供一种顺序访问聚合对象元素的方法，并且不暴露聚合对象的内部表示。
+
+### Class Diagram
+
+* Aggregate 是聚合类，其中 createIterator() 方法可以产生一个 Iterator；
+* Iterator 主要定义了 hasNext() 和 next() 方法；
+* Client 组合了 Aggregate，为了迭代遍历 Aggregate，也需要组合 Iterator。
+
+<div align="center"> <img src="/cs-notes/content-assets/958ca3c2cc6c-image-20201102012333804.png" alt="image-20191130164425351" style="zoom: 67%;" /> </div><br>
+
+### Implementation
+
+```java
+public interface Aggregate {
+    Iterator createIterator();
+}
+```
+
+```java
+public class ConcreteAggregate implements Aggregate {
+
+    private Integer[] items;
+
+    public ConcreteAggregate() {
+        items = new Integer[10];
+        for (int i = 0; i < items.length; i++) {
+            items[i] = i;
+        }
+    }
+
+    @Override
+    public Iterator createIterator() {
+        return new ConcreteIterator<Integer>(items);
+    }
+}
+```
+
+```java
+public interface Iterator<Item> {
+
+    Item next();
+
+    boolean hasNext();
+}
+```
+
+```java
+public class ConcreteIterator<Item> implements Iterator {
+
+    private Item[] items;
+    private int position = 0;
+
+    public ConcreteIterator(Item[] items) {
+        this.items = items;
+    }
+
+    @Override
+    public Object next() {
+        return items[position++];
+    }
+
+    @Override
+    public boolean hasNext() {
+        return position < items.length;
+    }
+}
+```
+
+```java
+public class Client {
+
+    public static void main(String[] args) {
+        Aggregate aggregate = new ConcreteAggregate();
+        Iterator<Integer> iterator = aggregate.createIterator();
+        while (iterator.hasNext()) {
+            System.out.println(iterator.next());
+        }
+    }
+}
+```
+
+### JDK
+
+* [java.util.Iterator](http://docs.oracle.com/javase/8/docs/api/java/util/Iterator.html)
+* [java.util.Enumeration](http://docs.oracle.com/javase/8/docs/api/java/util/Enumeration.html)

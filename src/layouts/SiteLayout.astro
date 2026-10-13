@@ -1,0 +1,30 @@
+---
+import SearchDialog from '../components/SearchDialog';
+import { url } from '../lib/content';
+import '../styles/global.css';
+interface Props { title: string; description?: string; }
+const { title, description = '计算机基础与技术笔记，一个安静的个人阅读空间。' } = Astro.props;
+const path = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="zh-CN" data-theme="system">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · CS Notes</title><meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
+    <script is:inline>
+      try { const s = JSON.parse(localStorage.getItem('cs-notes-reader:v1') || 'null')?.settings; if (s && ['system','light','dark'].includes(s.theme)) document.documentElement.dataset.theme = s.theme; if (s && [16,18,20].includes(s.fontSize)) document.documentElement.style.setProperty('--reading-size', s.fontSize+'px'); } catch {}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <header class="site-header"><div class="header-inner">
+      <a href={url()} class="brand" aria-label="CS Notes 首页"><span class="brand-symbol">N<span>·</span></span><span>CS <strong>Notes</strong><small>计算机知识笔记</small></span></a>
+      <nav aria-label="主要导航"><a href={url()} aria-current={path.replace(/\/$/, '') === url().replace(/\/$/, '') ? 'page' : undefined}>知识目录</a><a href={url('reading.html')} aria-current={path.endsWith('/reading.html') ? 'page' : undefined}>我的阅读</a><a href={url('settings.html')} aria-current={path.endsWith('/settings.html') ? 'page' : undefined}>设置</a></nav>
+      <SearchDialog client:load />
+    </div></header>
+    <slot />
+    <footer class="site-footer"><div><span>CS Notes <span class="footer-dot">·</span> 慢慢读，认真想。</span><span>内容来自 <a href="https://github.com/CyC2018/CS-Notes" target="_blank" rel="noopener noreferrer">CyC2018 / CS-Notes</a> <a href={url('about.html')}>来源与许可</a></span></div></footer>
+  </body>
+</html>

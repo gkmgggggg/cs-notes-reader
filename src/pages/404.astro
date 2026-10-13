@@ -1,0 +1,5 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { url } from '../lib/content';
+---
+<SiteLayout title="没有找到这一页"><main id="main" class="simple-main"><div class="page-heading"><span class="eyebrow">404 / PAGE NOT FOUND</span><h1>这页笔记不在这里。</h1><p>回到目录，或通过顶部搜索寻找相关知识。</p><a href={url()} class="primary-button">返回知识目录 →</a></div></main></SiteLayout>
